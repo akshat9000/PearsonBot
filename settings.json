@@ -1,9 +1,9 @@
 {
   "timeframe": 30,
-  "timescale": "min",
   "min_linreg": 3,
-  "take_profit": 5,
-  "stop_loss": 3,
+  "tp": 5,
+  "sl": 3,
+  "x": 1,
 
   "data_path": "D:/Pearson/data",
   "data_list": ["esapr.txt"]

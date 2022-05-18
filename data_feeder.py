@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import datetime
+from tqdm import tqdm
 import json
 
 import warnings
@@ -33,6 +33,12 @@ class DataFeeder:
             for i in range(len(df)):
                 yield df.iloc[i]
 
+    def old_get_tick(self):
+        temp = pd.read_csv("data/resampled.csv", usecols=['Datetime', 'Open', 'High', 'Low', 'Close'])
+        temp['Datetime'] = pd.to_datetime(temp['Datetime'])
+        for i in range(len(temp)):
+            yield temp.iloc[i]
+
 
 # def read_data():
 #     df = pd.read_csv("resampled.csv", usecols=['Datetime','Open','High','Low','Close'])
@@ -50,7 +56,10 @@ class DataFeeder:
 if __name__ == "__main__":
     settings = get_settings()
     DF = DataFeeder(settings)
-    for series in DF.get_tick():
-        print(series.to_string())
-        break
-
+    for idx, series in tqdm(enumerate(DF.old_get_tick())):
+        if idx == 0:
+            print(idx)
+            print("prev")
+        else:
+            print(idx)
+            break
