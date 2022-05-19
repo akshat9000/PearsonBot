@@ -57,9 +57,5 @@ if __name__ == "__main__":
     settings = get_settings()
     DF = DataFeeder(settings)
     for idx, series in tqdm(enumerate(DF.old_get_tick())):
-        if idx == 0:
-            print(idx)
-            print("prev")
-        else:
-            print(idx)
-            break
+        print(series)
+        break
