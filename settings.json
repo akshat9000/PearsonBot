@@ -1,0 +1,13 @@
+{
+  "timeframe": 30,
+  "min_linreg": 3,
+  "tp": 2,
+  "sl": 5,
+  "x": 1,
+
+  "start_time": "06:30:00",
+  "end_time": "14:00:00",
+
+  "data_path": "D:/Pearson/data",
+  "data_list": ["esmay.txt"]
+}
