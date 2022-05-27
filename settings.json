@@ -1,8 +1,8 @@
 {
   "timeframe": 30,
   "min_linreg": 3,
-  "tp": 5,
-  "sl": 3,
+  "tp": 15,
+  "sl": 13,
   "x": 1,
 
   "data_path": "D:/Pearson/data",
