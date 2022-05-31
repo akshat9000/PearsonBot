@@ -5,9 +5,11 @@
   "sl": 5,
   "x": 1,
 
-  "start_time": "06:30:00",
+  "amtperpoint": 50,
+  "tickvalue": 4,
+
+  "start_time": "06:00:00",
   "end_time": "14:00:00",
 
-  "data_path": "D:/Pearson/data",
-  "data_list": ["esmay.txt"]
+  "data_list": ["estest.txt"]
 }

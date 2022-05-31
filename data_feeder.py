@@ -16,7 +16,6 @@ def get_settings():
 
 class DataFeeder:
     def __init__(self, settings):
-        self.path = settings['data_path']
         self.data_list = settings['data_list']
 
     def print_settings(self):
@@ -35,10 +34,13 @@ class DataFeeder:
                 yield df.iloc[i]
 
     def old_get_tick(self):
-        temp = pd.read_csv("resampled2.csv", usecols=['Datetime', 'Open', 'High', 'Low', 'Close'])
-        temp['Datetime'] = pd.to_datetime(temp['Datetime'])
-        for i in range(len(temp)):
-            yield temp.iloc[i]
+        try:
+            temp = pd.read_csv("data/resampled.csv", usecols=['Datetime', 'Open', 'High', 'Low', 'Close'])
+            temp['Datetime'] = pd.to_datetime(temp['Datetime'])
+            for i in range(len(temp)):
+                yield temp.iloc[i]
+        except FileNotFoundError:
+            print(f"Resampled file not found in data directory, please create data before running")
 
 
 # def read_data():
