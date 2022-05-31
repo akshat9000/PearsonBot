@@ -16,6 +16,13 @@ import data_feeder
 settings = data_feeder.get_settings()
 DF = data_feeder.DataFeeder(settings)
 
+ohlc_dict = {
+    "Open": "first",
+    "High": "max",
+    "Low": "min",
+    "Close": "last"
+}
+
 
 class PearsonBot:
     def __init__(self, settings):
@@ -24,9 +31,9 @@ class PearsonBot:
             self.tick_value = settings['tickvalue']
             self.start_time = datetime.datetime.strptime(settings['start_time'], "%H:%M:%S").time()
             self.end_time = datetime.datetime.strptime(settings['end_time'], "%H:%M:%S").time()
-            self.timeframe = settings['timeframe']
+            self.timeframe = settings['timeframe'] * 60
             self.min_linreg = settings['min_linreg']
-            self.df_timeframe = pd.DataFrame()
+            self.df_timeframe_sec = pd.DataFrame()
             self.status = "none"
             self.counter = 0
             self.m = np.nan
@@ -60,20 +67,27 @@ class PearsonBot:
         self.counter = 0
 
     def flush_df(self):
-        self.df_timeframe = pd.DataFrame()
+        self.df_timeframe_sec = pd.DataFrame()
 
     def flush_all(self):
         self.flush_df()
         self.flush_counter()
         self.flush_trade_taken()
 
+    def save_minutely(self):
+        df_master = self.df_master.set_index("Datetime").resample("1T", closed="left", label="left").agg(ohlc_dict)
+        df_master.reset_index(inplace=True)
+        df_master.dropna(subset=['Open'], inplace=True)
+        return df_master
+
+
     def calc_hl2(self) -> None:
-        self.df_timeframe['hl2'] = ((self.df_timeframe['High'] + self.df_timeframe['Low']) / 2)
+        self.df_timeframe_sec['hl2'] = ((self.df_timeframe_sec['High'] + self.df_timeframe_sec['Low']) / 2)
 
     def calc_coeffs(self):
-        self.df_timeframe = self.df_timeframe.reset_index().drop(columns='index').reset_index()
+        self.df_timeframe_sec = self.df_timeframe_sec.reset_index().drop(columns='index').reset_index()
         lr = LinearRegression()
-        lr.fit(self.df_timeframe[['index']], self.df_timeframe['hl2'])
+        lr.fit(self.df_timeframe_sec[['index']], self.df_timeframe_sec['hl2'])
         self.m = lr.coef_[0]
         self.c = lr.intercept_
 
@@ -88,10 +102,10 @@ class PearsonBot:
 
     def calc_lr(self):
         self.calc_coeffs()
-        self.df_timeframe['lin_reg'] = self.df_timeframe['index'].apply(self.lin_reg_fn)
+        self.df_timeframe_sec['lin_reg'] = self.df_timeframe_sec['index'].apply(self.lin_reg_fn)
 
     def sell_signal(self, tick):
-        index = 30 + self.counter
+        index = 1800 + self.counter
         value = self.std_channel_up(index, self.x)
         # if self.prev.High < value <= tick.High:
         if value <= tick.High:
@@ -100,7 +114,7 @@ class PearsonBot:
             return False
 
     def buy_signal(self, tick):
-        index = 30 + self.counter
+        index = 1800 + self.counter
         # if self.prev.Low > self.std_channel_down(index, self.x) >= tick.Low:
         if self.std_channel_down(index, self.x) >= tick.Low:
             return True
@@ -128,7 +142,7 @@ class PearsonBot:
                 self.status = "hdown"
 
     def do_tick(self, tick):
-        index = 30 + self.counter
+        index = 1800 + self.counter
         up_std = self.std_channel_up(index, self.x)
         down_std = self.std_channel_down(index, self.x)
         hl2 = ((tick.High - tick.Low) / 2) + tick.Low
@@ -227,7 +241,7 @@ class PearsonBot:
     def on_tick(self, tick: pd.Series):
         if self.counter < self.timeframe:
             self.counter += 1
-            index = self.counter + 30
+            index = self.counter + 1800
             temp_df = pd.DataFrame([tick], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
 
             try:
@@ -244,7 +258,7 @@ class PearsonBot:
                 temp_df['cont_down'] = 0
                 temp_df['cont_down'] = [0]
 
-            self.df_timeframe = pd.concat([self.df_timeframe, temp_df])
+            self.df_timeframe_sec = pd.concat([self.df_timeframe_sec, temp_df])
 
             if not np.isnan(self.m) and not np.isnan(self.c):
                 if not self.trade_taken:
@@ -252,22 +266,22 @@ class PearsonBot:
 
         else:
             self.calc_hl2()
-            max = self.df_timeframe['High'].max()
-            min = self.df_timeframe['Low'].min()
+            max = self.df_timeframe_sec['High'].max()
+            min = self.df_timeframe_sec['Low'].min()
             self.std = (max - min) #/ 2
-            # self.std = self.df_timeframe['hl2'].std()
+            # self.std = self.df_timeframe_sec['hl2'].std()
             self.calc_lr()
-            # print(self.df_timeframe['lin_reg'].max() - self.df_timeframe['lin_reg'].min())
-            if (self.df_timeframe['lin_reg'].max() - self.df_timeframe['lin_reg'].min()) > self.min_linreg:  # Tighter channels
+            # print(self.df_timeframe_sec['lin_reg'].max() - self.df_timeframe_sec['lin_reg'].min())
+            if (self.df_timeframe_sec['lin_reg'].max() - self.df_timeframe_sec['lin_reg'].min()) > self.min_linreg:  # Tighter channels
                 self.std = self.std / 2
-            self.df_timeframe['1_std_up'] = self.df_timeframe['index'].apply(lambda x: self.std_channel_up(x, self.x))
-            self.df_timeframe['1_std_down'] = self.df_timeframe['index'].apply(
+            self.df_timeframe_sec['1_std_up'] = self.df_timeframe_sec['index'].apply(lambda x: self.std_channel_up(x, self.x))
+            self.df_timeframe_sec['1_std_down'] = self.df_timeframe_sec['index'].apply(
                 lambda x: self.std_channel_down(x, self.x))
-            self.df_master = pd.concat([self.df_master, self.df_timeframe])
+            self.df_master = pd.concat([self.df_master, self.df_timeframe_sec])
             self.flush_all()
             self.counter += 1
             temp_df = pd.DataFrame([tick], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
-            index = self.counter + 30 #-1
+            index = self.counter + 1800 #-1
 
             try:
                 std_up = self.std_channel_up(index, self.x)
@@ -283,7 +297,7 @@ class PearsonBot:
                 temp_df['cont_down'] = 0
                 temp_df['cont_down'] = [0]
 
-            self.df_timeframe = pd.concat([self.df_timeframe, temp_df])
+            self.df_timeframe_sec = pd.concat([self.df_timeframe_sec, temp_df])
 
             if not np.isnan(self.m) and not np.isnan(self.c):
                 self.do_tick(tick)
@@ -319,7 +333,7 @@ class PearsonBot:
             print(f"{self.prev.Datetime} Backtesting positions closed @ mkt {self.prev.Close} ## END")
             self.in_position = False
             temp = pd.DataFrame([self.prev], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
-            index = 30 + self.counter
+            index = 1800 + self.counter
             value = self.std_channel_up(index, self.x)
             value = round(value * self.tick_value) / self.tick_value
             temp['side'] = "prev"
@@ -330,7 +344,12 @@ class PearsonBot:
             self.all_trades = pd.concat([self.all_trades, temp])
 
         self.all_trades.to_csv(f"outputs/all_trades/all_trades_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
+
+        # self.df_master.to_csv(f"outputs/master/master_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
+        # df_master = self.save_minutely()
+        # df_master.to_csv(f"outputs/master/master_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
         self.df_master.to_csv(f"outputs/master/master_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
+
         self.entry_df.to_csv(f"outputs/entry/entry_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
         self.exit_df.to_csv(f"outputs/exit/exit_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
 

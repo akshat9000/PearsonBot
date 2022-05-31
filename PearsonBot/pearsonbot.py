@@ -255,9 +255,9 @@ class PearsonBot:
             max = self.df_timeframe['High'].max()
             min = self.df_timeframe['Low'].min()
             self.std = (max - min) #/ 2
-            # self.std = self.df_timeframe['hl2'].std()
+            # self.std = self.df_timeframe_sec['hl2'].std()
             self.calc_lr()
-            # print(self.df_timeframe['lin_reg'].max() - self.df_timeframe['lin_reg'].min())
+            # print(self.df_timeframe_sec['lin_reg'].max() - self.df_timeframe_sec['lin_reg'].min())
             if (self.df_timeframe['lin_reg'].max() - self.df_timeframe['lin_reg'].min()) > self.min_linreg:  # Tighter channels
                 self.std = self.std / 2
             self.df_timeframe['1_std_up'] = self.df_timeframe['index'].apply(lambda x: self.std_channel_up(x, self.x))

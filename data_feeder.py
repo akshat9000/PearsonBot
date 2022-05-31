@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import json
+import time
 import datetime
 
 import warnings
@@ -35,8 +36,13 @@ class DataFeeder:
 
     def old_get_tick(self):
         try:
-            temp = pd.read_csv("data/resampled.csv", usecols=['Datetime', 'Open', 'High', 'Low', 'Close'])
-            temp['Datetime'] = pd.to_datetime(temp['Datetime'])
+            print(f"\nIn get_old_tick function...\n")
+            temp = pd.read_csv("data/estest.txt", sep=",", usecols=['Date', 'Time', 'Open', 'High', 'Low', 'Close'])
+            temp['Datetime'] = pd.to_datetime(temp['Date'] + " " + temp['Time'])
+            temp = temp[['Datetime', 'Open', 'Low', 'High', 'Close']]
+            time.sleep(2)
+            print(f"\n\nConverting to datetime...\n\n")
+            time.sleep(2)
             for i in range(len(temp)):
                 yield temp.iloc[i]
         except FileNotFoundError:

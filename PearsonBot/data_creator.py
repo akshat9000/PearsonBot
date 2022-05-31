@@ -42,7 +42,7 @@ def main(data_list: list):
     print(f"\nConverting to Datetime values...\nThis might take a few minutes...")
     df['Datetime'] = pd.to_datetime(df['Datetime'])
     df.sort_values(by='Datetime', ascending=True, inplace=True)
-    df['Datetime'] = df['Datetime'].apply(lambda x: min1(x))
+    # df['Datetime'] = df['Datetime'].apply(lambda x: min1(x))
     print(f"\nResampling...")
     df_resample_raw = df.set_index("Datetime").resample("1T", closed="left", label="left").agg(ohlc_dict)
     df_resample_raw.reset_index(inplace=True)
