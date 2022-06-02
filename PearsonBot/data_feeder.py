@@ -1,7 +1,10 @@
+import os
+
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import json
+import time
 import datetime
 
 import warnings
@@ -35,10 +38,22 @@ class DataFeeder:
 
     def old_get_tick(self):
         try:
-            temp = pd.read_csv("data/resampled.csv", usecols=['Datetime', 'Open', 'High', 'Low', 'Close'])
-            temp['Datetime'] = pd.to_datetime(temp['Datetime'])
-            for i in range(len(temp)):
-                yield temp.iloc[i]
+            # print(f"\nIn get_old_tick function...\n")
+            all_data = pd.DataFrame()
+            for data in self.data_list:
+                print(os.getcwd())
+                temp = pd.read_csv(os.path.join(os.getcwd(), "data", f"{data}"), sep=",", usecols=['Date', 'Time', 'Open', 'High', 'Low', 'Close'])
+                temp['Datetime'] = temp['Date'] + " " + temp['Time']
+                temp = temp[['Datetime', 'Open', 'Low', 'High', 'Close']]
+                all_data = pd.concat([all_data, temp])
+            # time.sleep(2)
+            # print(f"\n\nConverting to datetime...\n\n")
+            # time.sleep(2)
+            for i in range(len(all_data)):
+                series = all_data.iloc[i]
+                dt_str = str(series.Datetime)
+                series.Datetime = datetime.datetime.strptime(dt_str, "%m/%d/%Y %H:%M:%S")
+                yield series
         except FileNotFoundError:
             print(f"Resampled file not found in data directory, please create data before running")
 

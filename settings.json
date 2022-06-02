@@ -2,7 +2,7 @@
   "timeframe": 30,
   "min_linreg": 3,
   "tp": 2,
-  "sl": 5,
+  "sl": 2,
   "x": 1,
 
   "amtperpoint": 50,
@@ -11,5 +11,5 @@
   "start_time": "06:00:00",
   "end_time": "14:00:00",
 
-  "data_list": ["esmay.txt"]
+  "data_list": ["estest.txt"]
 }

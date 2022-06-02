@@ -19,6 +19,8 @@ ohlc_dict = {
     "Close": "last"
 }
 
+
+
 def min1(x):
     x - datetime.timedelta(0, 1)
     return x
@@ -41,7 +43,8 @@ def main(data_list: list):
     df.drop_duplicates(subset=['Datetime'], keep="first", inplace=True)
     print(f"\nConverting to Datetime values...\nThis might take a few minutes...")
     df['Datetime'] = pd.to_datetime(df['Datetime'])
-    df.sort_values(by='Datetime', ascending=True, inplace=True)
+    df.Datetime = df.Datetime - pd.Timedelta(1)
+    # df.sort_values(by='Datetime', ascending=True, inplace=True)
     # df['Datetime'] = df['Datetime'].apply(lambda x: min1(x))
     print(f"\nResampling...")
     df_resample_raw = df.set_index("Datetime").resample("1T", closed="left", label="left").agg(ohlc_dict)

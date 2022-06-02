@@ -19,6 +19,8 @@ ohlc_dict = {
     "Close": "last"
 }
 
+
+
 def min1(x):
     x - datetime.timedelta(0, 1)
     return x
