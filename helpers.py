@@ -24,5 +24,5 @@ def convert_second_to_minute(df: pd.DataFrame) -> pd.DataFrame:
     df.set_index("Datetime", inplace=True)
     df_sampled = df.resample("1min").apply(ohlc_dict)
     df_sampled = df_sampled.reset_index()
-    # df_sampled = df_sampled.dropna(subset=['Open'])
+    df_sampled = df_sampled.dropna(subset=['Open'])
     return df_sampled

@@ -28,10 +28,11 @@ class PearsonBot:
     def __init__(self, settings):
         try:
             self.entry_timer = np.nan
+            self.data_list = settings['data_list']
             self.amtperpoint = settings['amtperpoint']
             self.tick_value = settings['tickvalue']
-            self.start_time = datetime.datetime.strptime(settings['start_time'], "%H:%M:%S").time()
-            self.end_time = datetime.datetime.strptime(settings['end_time'], "%H:%M:%S").time()
+            self.start_time = datetime.datetime.strptime(settings['start_time'], "%H:%M:%S")#.time()
+            self.end_time = datetime.datetime.strptime(settings['end_time'], "%H:%M:%S")#.time()
             self.timeframe = settings['timeframe']  # * 60 # in minutes
             self.min_linreg = settings['min_linreg']
             self.df_timeframe_sec = pd.DataFrame()
@@ -108,7 +109,7 @@ class PearsonBot:
 
     def sell_signal(self, tick):
         index = int(30 + (self.counter / 60))
-        value = self.std_channel_up(index, self.x)
+        value = self.std_channel_up(x=index, n=self.x)
         # if self.prev.High < value <= tick.High:
         if value <= tick.High:
             return True
@@ -118,7 +119,7 @@ class PearsonBot:
     def buy_signal(self, tick):
         index = int(30 + (self.counter / 60))
         # if self.prev.Low > self.std_channel_down(index, self.x) >= tick.Low:
-        value = self.std_channel_down(index, self.x)
+        value = self.std_channel_down(x=index, n=self.x)
         if value >= tick.Low:
             return True
         else:
@@ -206,18 +207,17 @@ class PearsonBot:
 
     def do_tick(self, tick):
         index = int(30 + (self.counter / 60))
-        up_std = self.std_channel_up(index, self.x)
-        down_std = self.std_channel_down(index, self.x)
+        up_std = self.std_channel_up(x=index, n=self.x)
+        down_std = self.std_channel_down(x=index, n=self.x)
         hl2 = ((tick.High - tick.Low) / 2) + tick.Low
 
         self.set_status(tick, up_std, down_std, hl2)
 
-        if not self.in_position and self.sell_signal(tick) and self.signal_next == "none" and (self.status == "middle" or self.status == "hup"):
-            # Open SHORT position on tick.Open
-            self.trade_taken = True
+        if not self.in_position and self.signal_next == "sell_next":
             self.signal_next = "sell"
-            value = up_std
-            value = round(value * self.tick_value) / self.tick_value
+            self.trade_taken = True
+            value = tick.Open
+            # value = round(value * self.tick_value) / self.tick_value
             print(f"{tick.Datetime} SHORT position opened @ mkt open -> {value}")
             temp = pd.DataFrame([tick], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
             temp['side'] = "short"
@@ -231,38 +231,11 @@ class PearsonBot:
             take_profit = self.entry - self.tp
             stop_loss = self.entry + self.sl
             self.monitor_short(tick, take_profit, stop_loss)
-            # if tick.Low <= take_profit:  # Take profit -> close position
-            #     temp = pd.DataFrame([tick], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
-            #     temp['side'] = "short"
-            #     temp['exit_price'] = take_profit
-            #     temp['exit_price'] = [take_profit]
-            #     temp['original_status'] = "win"
-            #     self.exit_df = pd.concat([self.exit_df, temp])
-            #     self.all_trades = pd.concat([self.all_trades, temp])
-            #     self.exit = take_profit
-            #     print(f"{tick.Datetime} SHORT position closed @ mkt close -> {take_profit}\tTAKE PROFIT\n\tentry price: {self.entry}\texit price: {self.exit}")
-            #     self.in_position = False
-            #     self.signal_next = "none"
-            # elif tick.Low > take_profit and tick.High < stop_loss:  # Do nothing
-            #     pass
-            # elif tick.High >= stop_loss:  # Stop loss -> close position
-            #     temp = pd.DataFrame([tick], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
-            #     temp['side'] = "short"
-            #     temp['exit_price'] = stop_loss
-            #     temp['exit_price'] = [stop_loss]
-            #     temp['original_status'] = "lose"
-            #     self.exit_df = pd.concat([self.exit_df, temp])
-            #     self.all_trades = pd.concat([self.all_trades, temp])
-            #     self.exit = stop_loss
-            #     print(f"{tick.Datetime} SHORT position closed @ mkt close -> {stop_loss}\tSTOP LOSS\n\tentry price: {self.entry}\texit price: {self.exit}")
-            #     self.in_position = False
-            #     self.signal_next = "none"
-        elif not self.in_position and self.buy_signal(tick) and self.signal_next == "none" and (self.status == "middle" or self.status == "hdown"):
-            # Open LONG position on tick.Open
+        elif not self.in_position and self.signal_next == "buy_next":
+            self.signal_next = "buy"
             self.trade_taken = True
             value = down_std
             value = round(value * self.tick_value) / self.tick_value
-            self.signal_next = "buy"
             print(f"{tick.Datetime} LONG position opened @ mkt open -> {value}")
             temp = pd.DataFrame([tick], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
             temp['side'] = "long"
@@ -276,32 +249,12 @@ class PearsonBot:
             take_profit = self.entry + self.tp
             stop_loss = self.entry - self.sl
             self.monitor_long(tick, take_profit, stop_loss)
-            # if tick.High >= take_profit:  # Take profit -> close position
-            #     temp = pd.DataFrame([tick], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
-            #     temp['side'] = "long"
-            #     temp['exit_price'] = take_profit
-            #     temp['exit_price'] = [take_profit]
-            #     temp['original_status'] = "win"
-            #     self.exit_df = pd.concat([self.exit_df, temp])
-            #     self.all_trades = pd.concat([self.all_trades, temp])
-            #     self.exit = take_profit
-            #     print(f"{tick.Datetime} LONG position closed @ mkt close -> {take_profit}\tTAKE PROFIT\n\tentry price: {self.entry}\texit price: {self.exit}")
-            #     self.in_position = False
-            #     self.signal_next = "none"
-            # elif tick.High < take_profit and tick.Low > stop_loss:  # Do nothing
-            #     pass
-            # elif tick.Low <= stop_loss:  # Stop loss -> close position
-            #     temp = pd.DataFrame([tick], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
-            #     temp['side'] = "long"
-            #     temp['exit_price'] = stop_loss
-            #     temp['exit_price'] = [stop_loss]
-            #     temp['original_status'] = "lose"
-            #     self.exit_df = pd.concat([self.exit_df, temp])
-            #     self.all_trades = pd.concat([self.all_trades, temp])
-            #     self.exit = stop_loss
-            #     print(f"{tick.Datetime} LONG position closed @ mkt close -> {stop_loss}\tSTOP LOSS\n\tentry price: {self.entry}\texit price: {self.exit}")
-            #     self.in_position = False
-            #     self.signal_next = "none"
+        elif not self.in_position and self.sell_signal(tick) and self.signal_next == "none" and (self.status == "middle" or self.status == "hup"):
+            # Open SHORT position on next candle
+            self.signal_next = "sell_next"
+        elif not self.in_position and self.buy_signal(tick) and self.signal_next == "none" and (self.status == "middle" or self.status == "hdown"):
+            # Open LONG position on next candle
+            self.signal_next = "buy_next"
 
     def on_tick(self, tick: pd.Series):
         # if self.counter < self.timeframe:
@@ -317,8 +270,8 @@ class PearsonBot:
             temp_df = pd.DataFrame([tick], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
 
             try:
-                std_up = self.std_channel_up(index, self.x)
-                std_down = self.std_channel_down(index, self.x)
+                std_up = self.std_channel_up(x=index, n=self.x)
+                std_down = self.std_channel_down(x=index, n=self.x)
                 temp_df['cont_up'] = std_up
                 temp_df['cont_up'] = [std_up]
                 temp_df['cont_down'] = std_down
@@ -361,9 +314,9 @@ class PearsonBot:
             # print(self.df_timeframe_sec['lin_reg'].max() - self.df_timeframe_sec['lin_reg'].min())
             if (self.df_timeframe_min['lin_reg'].max() - self.df_timeframe_min['lin_reg'].min()) > self.min_linreg:  # Tighter channels
                 self.std = self.std / 2
-            self.df_timeframe_min['1_std_up'] = self.df_timeframe_min['index'].apply(lambda x: self.std_channel_up(x, self.x))
+            self.df_timeframe_min['1_std_up'] = self.df_timeframe_min['index'].apply(lambda x: self.std_channel_up(x=x, n=self.x))
             self.df_timeframe_min['1_std_down'] = self.df_timeframe_min['index'].apply(
-                lambda x: self.std_channel_down(x, self.x))
+                lambda x: self.std_channel_down(x=x, n=self.x))
             self.df_master = pd.concat([self.df_master, self.df_timeframe_min])
             self.flush_all()
             self.counter += 1
@@ -371,8 +324,8 @@ class PearsonBot:
             index = int(30 + (self.counter / 60)) #-1
 
             try:
-                std_up = self.std_channel_up(index, self.x)
-                std_down = self.std_channel_down(index, self.x)
+                std_up = self.std_channel_up(x=index, n=self.x)
+                std_down = self.std_channel_down(x=index, n=self.x)
                 temp_df['cont_up'] = std_up
                 temp_df['cont_up'] = [std_up]
                 temp_df['cont_down'] = std_down
@@ -389,63 +342,65 @@ class PearsonBot:
             if not np.isnan(self.m) and not np.isnan(self.c):
                 self.do_tick(tick)
 
+    def exit_process(self, tick, msg: str):
+        print(f"{self.prev.Datetime} Backtesting positions closed @ mkt {self.prev.Close} ## END")
+        self.in_position = False
+        self.signal_next = "none"
+        temp = pd.DataFrame([self.prev], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
+        # index = int(30 + (self.counter / 60))
+        # value = self.std_channel_up(index, self.x)
+        value = tick.Close
+        value = round(value * self.tick_value) / self.tick_value
+        temp['side'] = "prev"
+        temp['exit_price'] = value
+        temp['exit_price'] = [value]
+        temp['original_status'] = msg
+        self.exit_df = pd.concat([self.exit_df, temp])
+        self.all_trades = pd.concat([self.all_trades, temp])
+
+
     def main(self):
         curr_tick = pd.Series()
         for idx, series in enumerate(DF.old_get_tick()):
+            curr_time = series.Datetime
+            if curr_time >= datetime.datetime(2022, 5, 26, 6, 31, 35):
+                pass
+                # print("degbug")
             # print("*"*10, f"running for: {series.Datetime}", "*"*10)
-            curr_time = series.Datetime.time()
             if idx == 0:
                 self.prev = series
-                # self.entry_timer = series
-            if self.start_time <= curr_time <= self.end_time:
-                if curr_time >= datetime.time(6, 31, 59):
-                    # print("IN")
-                    pass
-                self.on_tick(series)
-                self.prev = series
+            if self.start_time.time() >= self.end_time.time():
+                if self.start_time.time() < curr_time.time() or self.end_time.time() > curr_time.time():
+                    self.on_tick(series)
+                    self.prev = series
+                else:
+                    if self.in_position:
+                        self.exit_process(self.prev, "END local")
+            elif self.start_time.time() < self.end_time.time():
+                if self.start_time.time() < curr_time.time() < self.end_time.time():
+                    self.on_tick(series)
+                    self.prev = series
+                else:
+                    if self.in_position:
+                        self.exit_process(self.prev, "END local")
             else:
-                if self.in_position:
-                    print(f"{self.prev.Datetime} Backtesting positions closed @ mkt {self.prev.Close} ## END")
-                    self.in_position = False
-                    self.signal_next = "none"
-                    temp = pd.DataFrame([self.prev], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
-                    index = int(30 + (self.counter / 60))
-                    value = self.std_channel_up(index, self.x)
-                    value = round(value * self.tick_value) / self.tick_value
-                    temp['side'] = "prev"
-                    temp['exit_price'] = value
-                    temp['exit_price'] = [value]
-                    temp['original_status'] = "END local"
-                    self.exit_df = pd.concat([self.exit_df, temp])
-                    self.all_trades = pd.concat([self.all_trades, temp])
+                print(f"WHAT ********* {self.start_time.time()} --- {curr_time.time()} --- {self.end_time.time()}")
 
         if self.in_position:
-            print(f"{self.prev.Datetime} Backtesting positions closed @ mkt {self.prev.Close} ## END")
-            self.in_position = False
-            temp = pd.DataFrame([self.prev], columns=['Datetime', 'Open', 'High', 'Low', 'Close'])
-            index = int(30 + (self.counter / 60))
-            value = self.std_channel_up(index, self.x)
-            value = round(value * self.tick_value) / self.tick_value
-            temp['side'] = "prev"
-            temp['exit_price'] = value
-            temp['exit_price'] = [value]
-            temp['original_status'] = "END"
-            self.exit_df = pd.concat([self.exit_df, temp])
-            self.all_trades = pd.concat([self.all_trades, temp])
+            self.exit_process(self.prev, "END")
 
-        self.all_trades.to_csv(f"outputs/all_trades/all_trades_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
+        all_data = "_".join([d[:-4] for d in self.data_list])
 
-        # self.df_master.to_csv(f"outputs/master/master_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
-        # df_master = self.save_minutely()
-        # df_master.to_csv(f"outputs/master/master_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
-        self.df_master.to_csv(f"outputs/master/master_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
+        self.all_trades.to_excel(f"outputs/all_trades/{all_data}_all_trades_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.xlsx", index=False)
 
-        self.entry_df.to_csv(f"outputs/entry/entry_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
-        self.exit_df.to_csv(f"outputs/exit/exit_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
+        self.df_master.to_excel(f"outputs/master/{all_data}_master_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.xlsx", index=False)
 
-        entries = pd.read_csv(os.path.join(os.getcwd(), "outputs", "entry", f"entry_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv"), usecols=['Datetime', 'entry_price', 'side'])
+        self.entry_df.to_excel(f"outputs/entry/{all_data}_entry_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.xlsx", index=False)
+        self.exit_df.to_excel(f"outputs/exit/{all_data}_exit_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.xlsx", index=False)
+
+        entries = pd.read_excel(os.path.join(os.getcwd(), "outputs", "entry", f"{all_data}_entry_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.xlsx"), usecols=['Datetime', 'entry_price', 'side'])
         entries.rename(columns={'Datetime': 'datetime_entry'}, inplace=True)
-        exits = pd.read_csv(os.path.join(os.getcwd(), "outputs", "exit", f"exit_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv"), usecols=['Datetime', 'exit_price'])
+        exits = pd.read_excel(os.path.join(os.getcwd(), "outputs", "exit", f"{all_data}_exit_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.xlsx"), usecols=['Datetime', 'exit_price'])
         exits.rename(columns={'Datetime': 'datetime_exit'}, inplace=True)
 
         temp_df = pd.concat([entries, exits], axis=1)[['datetime_entry', 'datetime_exit', 'entry_price', 'exit_price', 'side']]
@@ -457,7 +412,7 @@ class PearsonBot:
         temp_df['cuml pnl%'] = np.cumsum(temp_df['pnl%'])
         temp_df['cuml rtns'] = np.cumsum(temp_df['rtns'])
         temp_df['status'] = np.where(temp_df['pnl%'] > 0, "win", "lose")
-        temp_df.to_csv(f"outputs/pnl/pnl_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.csv", index=False)
+        temp_df.to_excel(f"outputs/pnl/{all_data}_pnl_df_std_{self.x}_tp_{self.tp_original}_sl_{self.sl_original}.xlsx", index=False)
 
 
 if __name__ == "__main__":

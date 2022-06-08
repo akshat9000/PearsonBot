@@ -1,15 +1,15 @@
 {
-  "timeframe": 30,
-  "min_linreg": 3,
+  "timeframe": 15,
+  "min_linreg": 2,
   "tp": 2,
-  "sl": 2,
-  "x": 1,
+  "sl": 4,
+  "x": 3,
 
   "amtperpoint": 50,
   "tickvalue": 4,
 
-  "start_time": "06:00:00",
-  "end_time": "14:00:00",
+  "start_time": "06:30:00",
+  "end_time": "12:30:00",
 
   "data_list": ["estest.txt"]
 }
